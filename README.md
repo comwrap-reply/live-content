@@ -17,12 +17,14 @@ workshop state file.
 ## What's in the tool
 
 - **Overview** — portfolio-wide freshness bar, KPI cards (% fresh, live out-of-date,
-  not-on-author orphans, oldest page), cross-site search, and a site list sortable by
-  needs-attention, size, or name.
-- **Site detail** — per-site bar and KPIs, a section breakdown (first path segment
-  after the site root), band toggles, flag filters (live out-of-date, not on author,
-  missing modified date), an optional page-type filter, search, sort, and pagination.
-- **Page rows** — title, path, last modified, last published, days since published,
+  broken live URLs, % in sitemap, oldest page), cross-site search, and a site list
+  sortable by needs-attention, size, or name. Site rows show out-of-date / broken
+  counts when non-zero, plus live article CF counts.
+- **Site detail** — Pages | Articles toggle, per-kind bar and KPIs, a section
+  breakdown on pages (first path segment after the site root), band toggles, flag
+  filters (live out-of-date, not on author, missing modified date, not in sitemap,
+  URL fail), an optional type filter, search, sort, and pagination.
+- **Rows** — title, path, last modified, last published, days since published,
   Author and Live links, plus badges for the flags the Excel already computed.
 
 ## Repo layout

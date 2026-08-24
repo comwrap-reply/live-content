@@ -8,7 +8,8 @@ This snapshot was converted from:
 
     build/report/Published-Pages-Report-Prod-2026-08-24.xlsx
 
-14 sites, **3,801** published pages, production only. Stage can be scraped later
+14 sites, **3,801** published pages and **3,727** live article content fragments
+(publisher only), production only. Stage can be scraped later
 (`refresh.py --fetch --env stage`); the JSON has an `environment` field.
 
 The workbook is produced by `build/report/index.js` (Node, axios + exceljs). That
@@ -27,11 +28,24 @@ public tree.
    `jcr:title`, `cq:lastModified` (falling back to `jcr:created`), `cq:lastReplicated`,
    `cq:lastReplicationAction`, and `sling:resourceType`.
 3. Freshness and flags are computed on the join, then written to one sheet per site
-   plus Overview / Sections rollups.
+   plus Overview / Articles Overview / Sections rollups.
+4. Each site’s public sitemap is fetched; pages and article CFs are flagged
+   **In Sitemap**.
+5. Live URLs are probed (redirects + soft-404) → **URL OK / URL Status**.
+6. Virtual articles under `/content/dam/global/articles` are enumerated on the
+   publisher (live CFs only), attributed by brand folder, and appended to each site
+   tab under an `ARTICLES` banner.
 
-`build/convert_xlsx.py` reads the **per-site sheets only**. Overview and Sections are
-skipped on purpose — the app recomputes those aggregates from the page list so they
-cannot drift.
+`build/convert_xlsx.py` reads the **per-site sheets only**. Overview, Articles
+Overview, and Sections are skipped on purpose — the app recomputes those aggregates
+so they cannot drift.
+
+Article CFs (`/content/dam/global/articles/...`, or rows after the `ARTICLES`
+banner) are split onto `site.articles[]` with their own `totals.articles`. Page
+totals stay pages-only so the ~3,700 CFs never inflate section counts. The
+dashboard counts **live (publisher)** article CFs only — matching pages — not the
+Articles Overview “Total Article CFs” figure that also includes unpublished
+author-only fragments.
 
 ## Freshness bands
 
@@ -55,6 +69,9 @@ Thresholds are stored on the JSON as `thresholdsYears` (`fresh` / `aging` / `sta
   deactivated on author).
 - **Missing cq:lastModified** — no last-modified date; age may be from `jcr:created`
   or unknown.
+- **Not in sitemap** — path is live but absent from that site’s public sitemap.
+- **URL fail** — live probe did not return a healthy page (HTTP error or soft-404).
+  Soft-404 detection means URL-fail counts are higher than raw HTTP 4xx.
 
 ## Sites in this snapshot
 
@@ -90,11 +107,13 @@ Top-level object:
 }
 ```
 
-Each site: `{ name, root, liveBase, authorBase, totals, pages }`.
+Each site: `{ name, root, liveBase, authorBase, totals, pages, articles }`.
 
-`totals` is recomputed by the converter from the page list (`published`, `fresh`,
+`totals` is recomputed by the converter from the **page** list (`published`, `fresh`,
 `aging`, `stale`, `veryStale`, `oldestYears`, `missingLastModified`, `liveOutOfDate`,
-`notOnAuthor`).
+`notOnAuthor`, `inSitemap`, `notInSitemap`, `urlOk`, `urlFail`). The same shape is
+nested at `totals.articles` for live article CFs. Token-estimate integers are stored
+on each row for a later export; they are not shown in the dashboard.
 
 Each page:
 
@@ -116,6 +135,15 @@ Each page:
 | `replicationAction` | e.g. `Activate` |
 | `liveUrl` | Public URL (`.html` mapping) |
 | `authorUrl` | Author editor URL |
+| `inSitemap` | `true` / `false` / `null` (blank in Excel) |
+| `urlOk` | `true` / `false` / `null` after the live probe |
+| `urlStatus` | Probe result (status or soft-404 note) |
+| `articlePublishDate` | Article CF publish date (blank on most pages) |
+| `primaryTag` | Primary tag when the scrape recorded one |
+| `liveHtmlTokens` / `liveTextTokens` / `cfTokens` / `combinedTokens` | Token estimates (JSON only) |
+
+`articles[]` uses the same row shape. Article paths live under
+`/content/dam/global/articles`.
 
 ## How to refresh
 
@@ -130,7 +158,9 @@ python3 refresh.py --xlsx report/Published-Pages-Report-Prod-YYYY-MM-DD.xlsx
 ```
 
 That converts the workbook → `raw/live-content-data.json` → encrypted
-`../live-content-data.json`. `index.html` is untouched.
+`../live-content-data.json`. `index.html` is untouched (`--data-only`). Pass
+`--full` as well when `template.html` changed, so the login shell is rebuilt
+with the same content key.
 
 **End to end (scrape AEM, then convert + encrypt)**
 
