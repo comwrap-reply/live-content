@@ -8,9 +8,11 @@ This snapshot was converted from:
 
     build/report/Published-Pages-Report-Prod-2026-08-24.xlsx
 
-14 sites, **3,801** published pages and **3,727** live article content fragments
-(publisher only), production only. Stage can be scraped later
-(`refresh.py --fetch --env stage`); the JSON has an `environment` field.
+14 sites, **3,729** published pages and **3,727** live article content fragments
+(publisher only), production only. Empty leftover `cq:Page` shells (deactivate
+removed `jcr:content` but left the node) are not counted as live. Stage can be
+scraped later (`refresh.py --fetch --env stage`); the JSON has an `environment`
+field.
 
 The workbook is produced by `build/report/index.js` (Node, axios + exceljs). That
 directory is part of `build/`, so it exists only on the **private** mirror — the
@@ -21,9 +23,10 @@ public tree.
 
 ## How the report is built (join)
 
-1. **Publisher is the source of truth for “published.”** Every `cq:Page` under each
-   site root is enumerated on reachable publishers. If the path is on a publisher,
-   it is live.
+1. **Publisher is the source of truth for “published.”** Every renderable `cq:Page`
+   (a `cq:Page` node that still has `jcr:content`) under each site root is
+   enumerated on reachable publishers. Empty leftover shells from a deactivate
+   that removed content are skipped — they 404 on the live site.
 2. **Author is metadata enrichment.** The same paths are looked up on author for
    `jcr:title`, `cq:lastModified` (falling back to `jcr:created`), `cq:lastReplicated`,
    `cq:lastReplicationAction`, and `sling:resourceType`.
