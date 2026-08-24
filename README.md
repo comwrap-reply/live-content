@@ -46,24 +46,24 @@ workshop state file.
 
 ## Refreshing the data
 
-1. Run the Published Pages Report (kept **outside** this repo — it talks to AEM and
-   holds author credentials). See [`SOURCES.md`](SOURCES.md).
-2. Convert the new workbook into the raw dataset:
+The scrape script, the Excel snapshot, and the converter all live in `build/`
+(private mirror only — never on this public repo). One command does convert +
+re-encrypt:
 
-   ```bash
-   python3 build/convert_xlsx.py /path/to/Published-Pages-Report-Prod-YYYY-MM-DD.xlsx
-   ```
+```bash
+cd build
+pip install -r requirements.txt      # once
 
-3. Rebuild the data only — `index.html` is untouched, so the login and content key stay
-   exactly as they are:
+# From an existing / new workbook
+python3 refresh.py --xlsx report/Published-Pages-Report-Prod-YYYY-MM-DD.xlsx
 
-   ```bash
-   cd build
-   pip install -r requirements.txt      # once
-   python3 build.py --data-only
-   ```
+# Or scrape AEM, write a new xlsx, convert, and encrypt (needs Node + AEM_PASS)
+python3 refresh.py --fetch --env prod
+```
 
-4. Commit the regenerated `live-content-data.json`.
+`--data-only` is the default, so `index.html` and the login stay as they are.
+Commit the regenerated `live-content-data.json`, then `python3 publish.py`.
+See [`SOURCES.md`](SOURCES.md) for the join, schema, and `build/report/` layout.
 
 Drop `--data-only` when you have also changed `template.html` and want a new `index.html`.
 That reuses the existing content key as long as a listed user still unlocks the current

@@ -6,18 +6,17 @@ actually live on a Southern Company AEM publisher, joined with author metadata
 
 This snapshot was converted from:
 
-    Published-Pages-Report-Prod-2026-08-24.xlsx
+    build/report/Published-Pages-Report-Prod-2026-08-24.xlsx
 
-14 sites, **3,801** published pages, production only. Stage is not in this file;
-drop a `Published-Pages-Report-Stage-*.xlsx` through `build/convert_xlsx.py` if you
-need it later (the JSON has an `environment` field).
+14 sites, **3,801** published pages, production only. Stage can be scraped later
+(`refresh.py --fetch --env stage`); the JSON has an `environment` field.
 
-The workbook is produced by a separate script that is **not** part of this repo
-(it talks to AEM author + publishers and holds author credentials):
-
-    ~/Documents/Work/scripts/published-pages-report/index.js
-
-Do not copy that script, its hosts, or its passwords into either GitHub repo.
+The workbook is produced by `build/report/index.js` (Node, axios + exceljs). That
+directory is part of `build/`, so it exists only on the **private** mirror — the
+public repo never gets the scraper, the Excel, or the author credentials. The
+script talks to AEM author + publishers; pass `AEM_USER` / `AEM_PASS` (see the
+header of `index.js`). Do not paste those into this README, issues, or the
+public tree.
 
 ## How the report is built (join)
 
@@ -120,16 +119,31 @@ Each page:
 
 ## How to refresh
 
-1. Re-run the Published Pages Report against AEM (outside this repo).
-2. Convert the new workbook:
+All of this is run from `build/` on a machine that has the private working copy
+(or the public clone, where `build/` is local and gitignored).
 
-   ```bash
-   python3 build/convert_xlsx.py /path/to/Published-Pages-Report-Prod-YYYY-MM-DD.xlsx
-   ```
+**New Excel you already have**
 
-   That overwrites `build/raw/live-content-data.json`.
-3. `cd build && python3 build.py --data-only`
-4. Commit `live-content-data.json` on the public repo; run `publish.py` to update the
-   private mirror.
+```bash
+cd build
+python3 refresh.py --xlsx report/Published-Pages-Report-Prod-YYYY-MM-DD.xlsx
+```
+
+That converts the workbook → `raw/live-content-data.json` → encrypted
+`../live-content-data.json`. `index.html` is untouched.
+
+**End to end (scrape AEM, then convert + encrypt)**
+
+```bash
+cd build
+# first time in report/: npm install  (refresh.py does this)
+AEM_USER=... AEM_PASS=... python3 refresh.py --fetch --env prod
+```
+
+`report/index.js` writes `Published-Pages-Report-Prod-YYYY-MM-DD.xlsx` next to
+itself; `refresh.py` then converts the newest matching workbook.
+
+Commit `live-content-data.json` on the public repo; run `publish.py` to update
+the private mirror (xlsx + scraper included).
 
 `index.html` is untouched. The content key is reused.

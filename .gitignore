@@ -1,6 +1,7 @@
-# Build inputs contain passwords (build/users.txt) and the plaintext dataset
-# (build/raw/live-content-data.json), plus the unencrypted app (build/template.html).
-# They must never be pushed to the PUBLIC repo — it only ever carries ciphertext.
+# Build inputs contain passwords (build/users.txt), the plaintext dataset
+# (build/raw/), the unencrypted app (build/template.html), the AEM scrape
+# (build/report/index.js), and the Excel snapshot. They must never be pushed
+# to the PUBLIC repo — it only ever carries ciphertext.
 # The private mirror tracks build/ on purpose; see build/publish.py.
 build/
 
