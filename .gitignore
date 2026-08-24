@@ -1,0 +1,20 @@
+# Build inputs contain passwords (build/users.txt) and the plaintext dataset
+# (build/raw/live-content-data.json), plus the unencrypted app (build/template.html).
+# They must never be pushed to the PUBLIC repo — it only ever carries ciphertext.
+# The private mirror tracks build/ on purpose; see build/publish.py.
+build/
+
+# Legacy / local plaintext — never commit.
+.creds
+live-content-data.plain.json
+*.xlsx
+
+# The deploy-root JSON file is ciphertext and IS meant to be committed:
+#   index.html  live-content-data.json
+# Do not add a *.json rule here.
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+__pycache__/
+*.pyc
