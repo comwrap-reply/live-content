@@ -4,15 +4,22 @@ The dashboard's dataset is a **point-in-time snapshot** of every `cq:Page` that 
 actually live on a Southern Company AEM publisher, joined with author metadata
 (titles, dates, replication, page type) to compute freshness bands and flags.
 
-This snapshot was converted from:
+The encrypted dataset contains two separate snapshots:
 
-    build/report/Published-Pages-Report-Prod-2026-08-24.xlsx
+| Tab | Snapshot | Sites | Published pages | Live article CFs |
+|---|---|---:|---:|---:|
+| Production | 2026-09-22 | 14 | 3,675 | 3,756 |
+| Stage | 2026-10-02 | 14 | 6,686 | 3,515 |
 
-14 sites, **3,729** published pages and **3,727** live article content fragments
-(publisher only), production only. Empty leftover `cq:Page` shells (deactivate
-removed `jcr:content` but left the node) are not counted as live. Stage can be
-scraped later (`refresh.py --fetch --env stage`); the JSON has an `environment`
-field.
+Source workbooks are `build/report/Published-Pages-Report-Prod-2026-09-22.xlsx`
+and `build/report/Published-Pages-Report-Stage-2026-10-02.xlsx`. Production is
+preserved from its existing snapshot. Stage enumerates each reachable publisher
+independently and combines their paths; empty leftover page shells are excluded.
+
+Stage website and sitemap requests are anonymous. Protected website responses
+(HTTP 401/403) are **unverified**, not broken. Unavailable sitemaps yield unknown
+coverage, not missing entries. The dashboard shows these limitations and only
+uses verified checks in URL-health and sitemap-coverage figures.
 
 The workbook is produced by `build/report/index.js` (Node, axios + exceljs). That
 directory is part of `build/`, so it exists only on the **private** mirror — the
@@ -95,20 +102,39 @@ Thresholds are stored on the JSON as `thresholdsYears` (`fresh` / `aging` / `sta
 | Southern Company Gas | `/content/southern-co-gas/southerncompanygas` | https://www.southerncompanygas.com |
 | 1 Minute Kitchen | `/content/southern-co-gas/1minute-kitchen` | https://www.1minute.kitchen |
 
-Author editor links use `https://author.southerncompany.com/editor.html`.
+Author editor links use `https://author.southerncompany.com/editor.html` for
+Production and `https://author-stage.southerncompany.com/editor.html` for Stage.
+Stage live links use the configured `stage.` website domains.
 
 ## Schema
 
-Top-level object:
+Top-level object (schema version 2):
 
-```
+```json
 {
-  "generated": "2026-08-24",
-  "environment": "prod",
-  "thresholdsYears": { "fresh": 1, "aging": 2, "stale": 3 },
-  "sites": [ /* one object per site */ ]
+  "schemaVersion": 2,
+  "defaultEnvironment": "prod",
+  "environments": {
+    "prod": {
+      "generated": "2026-09-22",
+      "environment": "prod",
+      "thresholdsYears": { "fresh": 1, "aging": 2, "stale": 3 },
+      "sites": []
+    },
+    "stage": {
+      "generated": "2026-10-02",
+      "environment": "stage",
+      "thresholdsYears": { "fresh": 1, "aging": 2, "stale": 3 },
+      "sites": []
+    }
+  }
 }
 ```
+
+Each snapshot has its own site list, dates, links, and totals. The app can also
+read legacy single-environment exports. `refresh.py` merges the selected snapshot
+into the existing bundle; updating Stage never replaces Production, and vice versa.
+
 
 Each site: `{ name, root, liveBase, authorBase, totals, pages, articles }`.
 
@@ -171,12 +197,32 @@ with the same content key.
 cd build
 # first time in report/: npm install  (refresh.py does this)
 AEM_USER=... AEM_PASS=... python3 refresh.py --fetch --env prod
+# or update the Stage tab, preserving Production:
+AEM_USER=... AEM_PASS=... python3 refresh.py --fetch --env stage
 ```
 
-`report/index.js` writes `Published-Pages-Report-Prod-YYYY-MM-DD.xlsx` next to
-itself; `refresh.py` then converts the newest matching workbook.
+`report/index.js` writes `Published-Pages-Report-{Prod|Stage}-YYYY-MM-DD.xlsx` next
+to itself. `refresh.py` converts the newest workbook matching the selected
+environment; `--env both` refreshes both. No matching workbook stops the refresh.
+The initial migration rebuilds the app automatically; later refreshes are data-only
+unless `--full` is supplied. Credentials belong in environment variables, never
+in the report source.
 
 Commit `live-content-data.json` on the public repo; run `publish.py` to update
 the private mirror (xlsx + scraper included).
 
-`index.html` is untouched. The content key is reused.
+The content key is reused, including when the app is rebuilt.
+
+## Excel download
+
+The dashboard generates a fresh `.xlsx` from the selected environment’s loaded
+snapshot. It includes an Overview per site plus all Pages and Articles, regardless
+of active search, site selection, or filters. Filenames include the environment
+and snapshot date. Dates and numbers retain their Excel types, links are clickable,
+and unavailable sitemap/URL checks are labeled `Unverified`. Malformed dates
+already present in the source remain unchanged text.
+
+ExcelJS 4.4.0 and the export worker are embedded inside the encrypted app during
+build. Downloads run entirely in the browser; no data is sent to an export service
+and no plaintext workbook is added to the public repository. The version, hash,
+and MIT license are retained in private `build/vendor/`.

@@ -11,11 +11,17 @@ key derived from their `username:password` (PBKDF2-SHA256, 310k iterations), so 
 files are safe to host on a public GitHub Pages URL. Credentials are distributed
 out-of-band — never commit them to this repo, this README, or any issue/PR.
 
+Protected stage website URLs are marked **unverified** when they require a login;
+unavailable sitemap checks are excluded from coverage and missing-sitemap flags.
+The page and article inventories still come from the stage publishers.
+
 This is a **read-only inventory**. Refreshing the data replaces the JSON; there is no
 workshop state file.
 
 ## What's in the tool
 
+- **Production | Stage** — separate inventories and snapshot dates, with Production selected by default. Switching environments clears search and filters.
+- **Download Excel** — exports the selected environment’s full snapshot locally in your browser, with Overview, Pages, and Articles sheets, sortable dates, filters, and Author/Live links. Dashboard search and filters do not limit the download.
 - **Overview** — portfolio-wide freshness bar, KPI cards (% fresh, live out-of-date,
   broken live URLs, % in sitemap, oldest page), cross-site search, and a site list
   sortable by needs-attention, size, or name. Site rows show out-of-date / broken
@@ -61,13 +67,18 @@ python3 refresh.py --xlsx report/Published-Pages-Report-Prod-YYYY-MM-DD.xlsx
 
 # Or scrape AEM, write a new xlsx, convert, and encrypt (needs Node + AEM_PASS)
 python3 refresh.py --fetch --env prod
+
+# Refresh Stage while preserving the Production snapshot
+python3 refresh.py --fetch --env stage
 ```
 
-`--data-only` is the default, so `index.html` and the login stay as they are.
+Each refresh replaces only the selected environment in the encrypted data file.
+`--env both` refreshes both tabs. The first migration to environment tabs rebuilds
+`index.html` automatically; later refreshes default to data-only.
 Commit the regenerated `live-content-data.json`, then `python3 publish.py`.
 See [`SOURCES.md`](SOURCES.md) for the join, schema, and `build/report/` layout.
 
-Drop `--data-only` when you have also changed `template.html` and want a new `index.html`.
+Use `--full` when you have also changed `template.html` and want a new `index.html`.
 That reuses the existing content key as long as a listed user still unlocks the current
 `index.html`. The build prints `content key reused from index.html` when this happens.
 
