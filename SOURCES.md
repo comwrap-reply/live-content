@@ -16,10 +16,18 @@ and `build/report/Published-Pages-Report-Stage-2026-10-02.xlsx`. Production is
 preserved from its existing snapshot. Stage enumerates each reachable publisher
 independently and combines their paths; empty leftover page shells are excluded.
 
-Stage website and sitemap requests are anonymous. Protected website responses
-(HTTP 401/403) are **unverified**, not broken. Unavailable sitemaps yield unknown
+Stage website and sitemap checks use a separate website login supplied through
+`STAGE_WEB_USER` / `STAGE_WEB_PASS`. Author credentials are not sent to websites.
+The website login is restricted to configured HTTPS stage domains, including
+redirects. Protected responses that still return HTTP 401/403 are **unverified**,
+not broken. Unavailable sitemaps yield unknown
 coverage, not missing entries. The dashboard shows these limitations and only
 uses verified checks in URL-health and sitemap-coverage figures.
+Stage network timeouts are also unverified. If repeated connection failures also
+affect a website's homepage, its remaining URL probes are marked unverified;
+publisher inventory queries still complete for every site.
+Stage requests run one at a time across all endpoints, with a five-second pause
+after each and at least 30 seconds of backoff for server/network failures.
 
 The workbook is produced by `build/report/index.js` (Node, axios + exceljs). That
 directory is part of `build/`, so it exists only on the **private** mirror — the
@@ -198,7 +206,7 @@ cd build
 # first time in report/: npm install  (refresh.py does this)
 AEM_USER=... AEM_PASS=... python3 refresh.py --fetch --env prod
 # or update the Stage tab, preserving Production:
-AEM_USER=... AEM_PASS=... python3 refresh.py --fetch --env stage
+AEM_USER=... AEM_PASS=... STAGE_WEB_USER=... STAGE_WEB_PASS=... python3 refresh.py --fetch --env stage
 ```
 
 `report/index.js` writes `Published-Pages-Report-{Prod|Stage}-YYYY-MM-DD.xlsx` next
