@@ -16,7 +16,13 @@ and `build/report/Published-Pages-Report-Stage-2026-10-02.xlsx`. Production is
 preserved from its existing snapshot. Stage enumerates each reachable publisher
 independently and combines their paths; empty leftover page shells are excluded.
 
-Stage website and sitemap checks use a separate website login supplied through
+The Stage snapshot uses **query-only mode**: batched publisher inventory queries
+joined to author metadata. It includes paths, titles, publication/modification
+dates, freshness, and author/publisher differences. Website health, sitemap
+coverage, and content-size estimates were not checked and remain unknown.
+Stage website URLs are derived from paths/tags and have not been validated.
+
+Optional Stage website and sitemap checks use a separate website login supplied through
 `STAGE_WEB_USER` / `STAGE_WEB_PASS`. Author credentials are not sent to websites.
 The website login is restricted to configured HTTPS stage domains, including
 redirects. Protected responses that still return HTTP 401/403 are **unverified**,
@@ -47,9 +53,10 @@ public tree.
    `cq:lastReplicationAction`, and `sling:resourceType`.
 3. Freshness and flags are computed on the join, then written to one sheet per site
    plus Overview / Articles Overview / Sections rollups.
-4. Each site’s public sitemap is fetched; pages and article CFs are flagged
-   **In Sitemap**.
-5. Live URLs are probed (redirects + soft-404) → **URL OK / URL Status**.
+4. When website checks are enabled, each site’s public sitemap is fetched;
+   pages and article CFs are flagged **In Sitemap**. Query-only mode leaves this unknown.
+5. When website checks are enabled, live URLs are probed (redirects + soft-404)
+   → **URL OK / URL Status**. Query-only mode skips probes and content-size reads.
 6. Virtual articles under `/content/dam/global/articles` are enumerated on the
    publisher (live CFs only), attributed by brand folder, and appended to each site
    tab under an `ARTICLES` banner.
@@ -206,6 +213,8 @@ cd build
 # first time in report/: npm install  (refresh.py does this)
 AEM_USER=... AEM_PASS=... python3 refresh.py --fetch --env prod
 # or update the Stage tab, preserving Production:
+AEM_USER=... AEM_PASS=... python3 refresh.py --fetch --env stage --query-only
+# Optional full website scan (much slower):
 AEM_USER=... AEM_PASS=... STAGE_WEB_USER=... STAGE_WEB_PASS=... python3 refresh.py --fetch --env stage
 ```
 
